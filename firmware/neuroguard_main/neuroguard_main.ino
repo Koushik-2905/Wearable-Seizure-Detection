@@ -71,9 +71,8 @@ class ServerCallbacks : public BLEServerCallbacks {
 
 class GPSWriteCallback : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *pChar) {
-    std::string val = pChar->getValue();
-    if (val.length() < 5) return;
-    String s = String(val.c_str());
+    String s = pChar->getValue();
+    if (s.length() < 5) return;
     int commaIdx = s.indexOf(',');
     if (commaIdx < 0) return;
     float lat = s.substring(0, commaIdx).toFloat();

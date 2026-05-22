@@ -21,8 +21,9 @@ Set `SIMULATION_MODE` to `1` in `config.h` — IMU data is synthetic; GSM/OLED s
 
 ## ML model (integrated from `mlmodel/`)
 
-1. Install **EloquentTinyML** library  
-2. `ENABLE_ML` is `1` in `config.h` by default  
+1. Install **EloquentTinyML** v3.x from Library Manager  
+2. Install **tflm_esp32**: [github.com/eloquentarduino/tflm_esp32](https://github.com/eloquentarduino/tflm_esp32) → clone into `Documents/Arduino/libraries/tflm_esp32`  
+3. `ENABLE_ML` is `1` in `config.h` by default  
 3. Files: `seizure_model.h`, `seizure_features.h`, `model_params.h`, `seizure_tflite.h`  
 4. Set `ENABLE_ML 0` to use threshold-only detection
 

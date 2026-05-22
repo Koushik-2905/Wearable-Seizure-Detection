@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include "detection.h"
 #include "seizure_tflite.h"
 #include <math.h>
