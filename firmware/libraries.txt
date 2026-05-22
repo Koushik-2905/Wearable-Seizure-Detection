@@ -1,0 +1,10 @@
+# Arduino Library Manager
+MPU6050 by Electronic Cats
+Adafruit SSD1306
+Adafruit GFX Library
+ArduinoJson by Benoit Blanchon
+SparkFun MAX3010x Pulse and Proximity Sensor Library
+EloquentTinyML (v3.x from Library Manager — use eloquent_tinyml.h, not EloquentTinyML.h)
+tflm_esp32 — https://github.com/eloquentarduino/tflm_esp32 (clone into Arduino/libraries)
+
+# ESP32: esp32 by Espressif

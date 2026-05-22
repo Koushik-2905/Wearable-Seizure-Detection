@@ -1,0 +1,17 @@
+export const sections = [
+  { id: "overview", label: "01 Project Overview", icon: "◈" },
+  { id: "architecture", label: "02 System Architecture", icon: "◉" },
+  { id: "hardware", label: "03 Hardware Components", icon: "◎" },
+  { id: "circuit", label: "04 Circuit Design", icon: "⊕" },
+  { id: "firmware", label: "05 ESP32 Firmware", icon: "⟨/⟩" },
+  { id: "mobileble", label: "06 Mobile BLE + GPS", icon: "📍" },
+  { id: "ai", label: "07 AI / ML Features", icon: "◈" },
+  { id: "alert", label: "08 Alert System", icon: "⚡" },
+  { id: "power", label: "09 Low-Power Design", icon: "⊙" },
+  { id: "testing", label: "10 Testing & Validation", icon: "✦" },
+  { id: "pitch", label: "11 Hackathon Pitch", icon: "★" },
+  { id: "demo", label: "12 Demo Strategy", icon: "▶" },
+  { id: "future", label: "13 Future Scope", icon: "⟳" },
+  { id: "readme", label: "14 GitHub README", icon: "⌂" },
+  { id: "team", label: "15 Team & Timeline", icon: "◇" },
+];
