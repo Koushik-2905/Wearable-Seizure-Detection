@@ -44,3 +44,8 @@ static const int CONTACT_COUNT = 2;
 #define MIN_DURATION_MS 10000
 #define GPS_STALE_MS 30000
 #define ML_CONFIDENCE_BLEND 0.35f
+
+// Your bench-tested HR + motion rules (from standalone sketch)
+#define USE_HARDWARE_LOGIC 1
+#define HARDWARE_TICK_MS 20
+#define ML_ALERT_THR 0.65f

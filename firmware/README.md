@@ -2,6 +2,11 @@
 
 GPS from phone over BLE — no NEO-6M module.
 
+## Hardware + ML (integrated)
+
+Your working MAX30102 + MPU6050 sketch is integrated in `hardware_logic.cpp`.  
+See [INTEGRATION.md](INTEGRATION.md).
+
 ## Flash
 
 1. Open `neuroguard_main/neuroguard_main.ino` in Arduino IDE

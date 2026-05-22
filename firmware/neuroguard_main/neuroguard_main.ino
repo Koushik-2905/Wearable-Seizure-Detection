@@ -2,6 +2,7 @@
 #include "config.h"
 #include "detection.h"
 #include "seizure_tflite.h"
+#include "hardware_logic.h"
 
 #include <Wire.h>
 #include <HardwareSerial.h>
@@ -14,7 +15,7 @@
 #if !SIMULATION_MODE
 #include <MPU6050.h>
 #include <Adafruit_SSD1306.h>
-#if ENABLE_HR_SENSOR
+#if ENABLE_HR_SENSOR && !USE_HARDWARE_LOGIC
 #include <MAX30105.h>
 #endif
 #endif
@@ -24,12 +25,10 @@ HardwareSerial gsmSerial(2);
 #endif
 
 #if !SIMULATION_MODE
-MPU6050 mpu;
 Adafruit_SSD1306 oled(128, 64, &Wire, -1);
-#if ENABLE_HR_SENSOR
-MAX30105 particleSensor;
 #endif
-#endif
+
+HardwareLogicState hwState;
 
 BLECharacteristic *alertChar = nullptr;
 BLECharacteristic *dataChar = nullptr;
@@ -107,7 +106,11 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(SOS_BTN_PIN), handleSOS, FALLING);
 
   initOLED();
+#if USE_HARDWARE_LOGIC && !SIMULATION_MODE
+  hardwareLogicInit();
+#else
   initMPU();
+#endif
   initGSM();
   initBLE();
 
@@ -121,8 +124,23 @@ void setup() {
 
 void loop() {
   static unsigned long tSample = 0;
-  static unsigned long tHR = 0;
+  static unsigned long tHw = 0;
   static unsigned long tMl = 0;
+
+#if USE_HARDWARE_LOGIC && !SIMULATION_MODE
+  if (millis() - tHw >= HARDWARE_TICK_MS) {
+    tHw = millis();
+    hwState = hardwareLogicTick();
+    detCtx.hrBPM = hwState.beatAvg;
+
+    if (state == MONITORING && hwState.isAbnormal && hwState.fingerPresent) {
+      state = DETECTED;
+      tDetect = millis();
+      activateLocal();
+      Serial.printf("[DETECT] Hardware rule: %s\n", hwState.status);
+    }
+  }
+#endif
 
   if (millis() - tSample >= 10) {
     tSample = millis();
@@ -132,16 +150,30 @@ void loop() {
     if (gMlReady && detCtx.bufFull && millis() - tMl >= ML_INFERENCE_INTERVAL_MS) {
       tMl = millis();
       detCtx.mlSeizureScore = runSeizureInference(detCtx);
+      Serial.printf("[ML] Seizure score: %.2f\n", detCtx.mlSeizureScore);
     }
 #endif
 
     if (detCtx.bufFull) {
+#if !USE_HARDWARE_LOGIC
       detCtx.confidence = analyzePattern(detCtx);
-      if (state == MONITORING && detCtx.confidence > CONFIDENCE_THR) {
+#else
+      detCtx.confidence = detCtx.mlSeizureScore;
+      if (hwState.isAbnormal) {
+        if (detCtx.confidence < 0.92f) detCtx.confidence = 0.92f;
+      }
+#endif
+
+      bool mlTrigger = gMlReady && (detCtx.mlSeizureScore >= ML_ALERT_THR);
+      if (state == MONITORING && (mlTrigger
+#if !USE_HARDWARE_LOGIC
+          || detCtx.confidence > CONFIDENCE_THR
+#endif
+          )) {
         state = DETECTED;
         tDetect = millis();
         activateLocal();
-        Serial.printf("[DETECT] Confidence: %.2f\n", detCtx.confidence);
+        Serial.printf("[DETECT] ML/threshold confidence: %.2f\n", detCtx.confidence);
       }
     }
   }
@@ -158,16 +190,6 @@ void loop() {
     char buf[32];
     snprintf(buf, 32, "Cancel: %ds", rem);
     showOLED("!! SEIZURE !!", "Sending alert...", buf);
-  }
-
-  if (millis() - tHR >= 5000) {
-    tHR = millis();
-#if !SIMULATION_MODE && ENABLE_HR_SENSOR
-    (void)particleSensor.getIR();
-    // TODO: wire SparkFun heartRate.ino algorithm or your signal processing
-#else
-    detCtx.hrBPM = 72;
-#endif
   }
 
   if (deviceConnected) broadcastData();
@@ -303,12 +325,13 @@ void readIMU() {
 }
 
 void initMPU() {
-#if !SIMULATION_MODE
+#if !SIMULATION_MODE && !USE_HARDWARE_LOGIC
   mpu.initialize();
   mpu.setFullScaleAccelRange(MPU6050_ACCEL_FS_2);
   mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_250);
   mpu.setDLPFMode(MPU6050_DLPF_BW_42);
 #if ENABLE_HR_SENSOR
+  MAX30105 particleSensor;
   if (!particleSensor.begin(Wire, I2C_SPEED_FAST)) {
     Serial.println("[HR] MAX30105 not found");
   } else {
