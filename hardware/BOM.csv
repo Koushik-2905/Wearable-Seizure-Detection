@@ -1,0 +1,14 @@
+Component,Model,Purpose,Cost_INR
+Microcontroller,ESP32 DevKit v1,Main MCU BLE WiFi,350
+IMU,MPU6050,Seizure motion detection,120
+Heart Rate,MAX30102,HR SpO2 confirmation,180
+GSM,SIM800L,SMS alerts,350
+OLED,SSD1306 0.96",Status display,120
+Buzzer,Piezo 5V,Local alert,20
+Vibration,ERM 3V,Haptic feedback,30
+Battery,LiPo 2000mAh,Power,200
+Charger,TP4056 USB-C,LiPo charge,40
+SOS Button,Tactile,Manual trigger,10
+Enclosure,3D TPU wristband,Wearable,100
+Misc,PCB resistors,Prototype,100
+TOTAL,,,~1220
