@@ -32,8 +32,9 @@ export default function AlertList({ alerts, onAcknowledge }) {
                     href={`https://maps.google.com/?q=${a.lat},${a.lng}`}
                     target="_blank"
                     rel="noopener noreferrer"
+                    className="btn-maps-inline"
                   >
-                    Map
+                    Google Maps →
                   </a>
                 )}
               </div>

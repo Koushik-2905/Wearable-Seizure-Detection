@@ -58,6 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onSensor(Map<String, dynamic> data) {
     if (!mounted) return;
+    FirebaseService.logVitals(data);
     final r = SensorReading.fromJson(data);
     setState(() {
       _reading = r;

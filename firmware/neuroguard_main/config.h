@@ -43,6 +43,12 @@ static const int CONTACT_COUNT = 2;
 #define CANCEL_WINDOW_MS 5000
 #define MIN_DURATION_MS 10000
 #define GPS_STALE_MS 30000
+
+// SIM800L cell-tower location when phone GPS / BLE unavailable (rough, ~100 m–2 km)
+#define ENABLE_GSM_LBS 1
+#define GSM_LBS_TIMEOUT_MS 15000
+// Carrier APN for CIPGSMLOC fallback ("" = default; set e.g. "airtelgprs.com", "internet", "jionet")
+static const char GSM_APN[] = "";
 #define ML_CONFIDENCE_BLEND 0.35f
 
 // Your bench-tested HR + motion rules (from standalone sketch)

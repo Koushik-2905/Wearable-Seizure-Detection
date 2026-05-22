@@ -1,6 +1,6 @@
 # NeuroGuard Firmware (ESP32 v2.0)
 
-GPS from phone over BLE — no NEO-6M module.
+GPS: **phone over BLE** (best). If no phone fix: **SIM800L cell location** (rough, ~100 m–2 km). No NEO-6M module.
 
 ## Hardware + ML (integrated)
 
@@ -29,6 +29,15 @@ Set `SIMULATION_MODE` to `1` in `config.h` — IMU data is synthetic; GSM/OLED s
 3. `ENABLE_ML` is `1` in `config.h` by default  
 3. Files: `seizure_model.h`, `seizure_features.h`, `model_params.h`, `seizure_tflite.h`  
 4. Set `ENABLE_ML 0` to use threshold-only detection
+
+## SIM rough location (no phone GPS)
+
+When `ENABLE_GSM` and `ENABLE_GSM_LBS` are `1` in `config.h`, the band queries the SIM800L on the cellular network (`AT+CLBS` then `AT+CIPGSMLOC`) before sending an alert if the phone did not provide GPS.
+
+- Requires **SIM inserted**, antenna, and **network registration** (not Wi‑Fi on a phone).
+- Set `GSM_APN` in `config.h` if `CIPGSMLOC` fails (carrier APN).
+- Serial log: `[GSM-LBS] OK via CLBS` or `CIPGSMLOC`.
+- SMS map link is tagged `(approx cell)` when only SIM location is used.
 
 ## Pin map
 

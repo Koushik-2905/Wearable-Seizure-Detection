@@ -11,6 +11,7 @@ Flash: `firmware/neuroguard_main/neuroguard_main.ino`
 | **Your rules** | Every 20 ms — IR, BPM, accel → `NORMAL` / `ABNORMAL - …` |
 | **ML model** | Every 2 s — 200×6 window → TFLite seizure score |
 | **BLE + GPS** | Phone sends lat/lng → stored for SMS |
+| **SIM LBS** | If no phone GPS: SIM800L cell-tower rough lat/lng for SMS/BLE |
 | **Alerts** | Hardware abnormal **or** ML score ≥ 0.65 → SMS + BLE |
 
 ## Serial output (same as your test + ML)

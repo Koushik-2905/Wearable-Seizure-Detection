@@ -12,17 +12,38 @@ Neuroguard/
 ├── ml/                  # TinyML model (your team — placeholder)
 ├── hardware/            # BOM + wiring
 ├── firebase/            # RTDB rules
-├── caretaker-dashboard/ # React caregiver UI (local :5174)
+├── caretaker-dashboard/ # Caretaker web app — alerts, Maps, vitals (:5174)
 └── PROJECT.md           # Full map
 ```
 
-## Caretaker dashboard
+## Two apps
+
+| App | User | Purpose |
+|-----|------|---------|
+| `mobile_app/` | **Patient** | BLE to wristband, sends GPS, live monitor |
+| `caretaker_app/` | **Caretaker** | Flutter app — **alarm + vibration + instant alerts** |
+| `caretaker-dashboard/` | **Caretaker** | Web dashboard — Maps, vitals (browser) |
+
+## Caretaker apps
+
+**Flutter (alarm + notifications):**
 
 ```bash
-cd caretaker-dashboard && npm install && npm run dev
+cd caretaker_app
+flutter create . --org com.neuroguard --project-name neuroguard_caretaker
+flutter pub get
+flutter run
 ```
 
-Opens http://localhost:5174 — live vitals, map link, alert history (demo data until Firebase is wired).
+See [caretaker_app/README.md](caretaker_app/README.md).
+
+**Web dashboard:**
+
+```bash
+cd caretaker-dashboard && npm.cmd install && npm.cmd run dev
+```
+
+http://localhost:5174 — [caretaker-dashboard/README.md](caretaker-dashboard/README.md).
 
 ## Documentation site
 

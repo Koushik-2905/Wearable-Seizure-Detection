@@ -2,9 +2,13 @@
   "rules": {
     "devices": {
       "$deviceId": {
+        "vitals": {
+          ".read": true,
+          ".write": true
+        },
         "events": {
-          ".read": "auth != null",
-          ".write": "auth != null"
+          ".read": true,
+          ".write": true
         }
       }
     }

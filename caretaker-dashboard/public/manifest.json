@@ -1,0 +1,10 @@
+{
+  "name": "NeuroGuard Caretaker",
+  "short_name": "Caretaker",
+  "description": "Live vitals, seizure alerts, and Google Maps for caregivers",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050a07",
+  "theme_color": "#00ff9d",
+  "orientation": "portrait"
+}

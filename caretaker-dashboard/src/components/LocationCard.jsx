@@ -1,4 +1,4 @@
-export default function LocationCard({ lat, lng, gpsOk }) {
+export default function LocationCard({ lat, lng, gpsOk, locSrc }) {
   const mapsUrl =
     lat != null && lng != null
       ? `https://maps.google.com/?q=${lat},${lng}`
@@ -12,7 +12,11 @@ export default function LocationCard({ lat, lng, gpsOk }) {
           <p className="coords">
             {lat.toFixed(5)}, {lng.toFixed(5)}
           </p>
-          <p className="loc-hint">From patient&apos;s phone via BLE</p>
+          <p className="loc-hint">
+            {locSrc === "sim"
+              ? "Approximate — SIM cell towers (no phone GPS)"
+              : "From patient\u2019s phone via BLE"}
+          </p>
           <a
             href={mapsUrl}
             target="_blank"

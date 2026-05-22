@@ -1,8 +1,9 @@
-// NeuroGuard ESP32 Firmware v2.0 — GPS via BLE from phone
+// NeuroGuard ESP32 Firmware v2.0 — GPS: phone BLE, SIM cell fallback
 #include "config.h"
 #include "detection.h"
 #include "seizure_tflite.h"
 #include "hardware_logic.h"
+#include "gsm_location.h"
 
 #include <Wire.h>
 #include <HardwareSerial.h>
@@ -41,8 +42,26 @@ unsigned long tDetect = 0;
 bool cancelFlag = false;
 
 float gpslat = 0.0f, gpslng = 0.0f;
-bool gpsValid = false;
+bool gpsValidPhone = false;
+bool gpsValidSim = false;
 unsigned long lastGPSReceived = 0;
+unsigned long lastSimLocationAttempt = 0;
+
+static bool hasGpsFix() { return gpsValidPhone || gpsValidSim; }
+
+static bool trySimLocationFallback() {
+#if ENABLE_GSM && ENABLE_GSM_LBS && !SIMULATION_MODE
+  float lat = 0, lng = 0;
+  if (gsmFetchRoughLocation(gsmSerial, &lat, &lng)) {
+    gpslat = lat;
+    gpslng = lng;
+    gpsValidSim = true;
+    Serial.printf("[GPS] SIM rough location: %.6f, %.6f\n", gpslat, gpslng);
+    return true;
+  }
+#endif
+  return false;
+}
 
 void showOLED(const char *l1, const char *l2, const char *l3);
 void initOLED();
@@ -80,7 +99,8 @@ class GPSWriteCallback : public BLECharacteristicCallbacks {
     if (lat >= -90.0f && lat <= 90.0f && lng >= -180.0f && lng <= 180.0f) {
       gpslat = lat;
       gpslng = lng;
-      gpsValid = true;
+      gpsValidPhone = true;
+      gpsValidSim = false;
       lastGPSReceived = millis();
       Serial.printf("[GPS] Received from phone: %.6f, %.6f\n", gpslat, gpslng);
     }
@@ -118,7 +138,7 @@ void setup() {
 #endif
 
   showOLED("NeuroGuard v2.0", "Monitoring...", "Waiting for phone");
-  Serial.println("[BOOT] NeuroGuard ready — GPS via BLE");
+  Serial.println("[BOOT] NeuroGuard ready — GPS: phone BLE + SIM cell fallback");
 }
 
 void loop() {
@@ -193,10 +213,23 @@ void loop() {
 
   if (deviceConnected) broadcastData();
 
-  if (gpsValid && millis() - lastGPSReceived > GPS_STALE_MS) {
-    gpsValid = false;
-    Serial.println("[GPS] Stale — phone may be out of BLE range");
+  if (gpsValidPhone && millis() - lastGPSReceived > GPS_STALE_MS) {
+    gpsValidPhone = false;
+    Serial.println("[GPS] Phone fix stale — trying SIM fallback");
+#if ENABLE_GSM && ENABLE_GSM_LBS
+    if (!gpsValidSim && millis() - lastSimLocationAttempt > 60000) {
+      lastSimLocationAttempt = millis();
+      trySimLocationFallback();
+    }
+#endif
   }
+
+#if ENABLE_GSM && ENABLE_GSM_LBS && !SIMULATION_MODE
+  if (!gpsValidPhone && !gpsValidSim && millis() - lastSimLocationAttempt > 120000) {
+    lastSimLocationAttempt = millis();
+    trySimLocationFallback();
+  }
+#endif
 
   if (state == ALERT_SENT && millis() - tDetect > 60000) {
     state = MONITORING;
@@ -206,14 +239,24 @@ void loop() {
 }
 
 void dispatchAlerts() {
-  char loc[140];
-  if (gpsValid)
-    snprintf(loc, 140, "maps.google.com/?q=%.6f,%.6f", gpslat, gpslng);
-  else
-    strcpy(loc, "GPS unavailable (open app)");
+#if ENABLE_GSM && ENABLE_GSM_LBS
+  if (!gpsValidPhone) {
+    trySimLocationFallback();
+  }
+#endif
 
-  char sms[256];
-  snprintf(sms, 256, "NEUROGUARD ALERT: Seizure! HR:%dBPM Conf:%.0f%% %s", detCtx.hrBPM,
+  char loc[160];
+  if (hasGpsFix()) {
+    if (gpsValidSim && !gpsValidPhone)
+      snprintf(loc, 160, "maps.google.com/?q=%.6f,%.6f (approx cell)", gpslat, gpslng);
+    else
+      snprintf(loc, 160, "maps.google.com/?q=%.6f,%.6f", gpslat, gpslng);
+  } else {
+    strcpy(loc, "Location unavailable");
+  }
+
+  char sms[280];
+  snprintf(sms, 280, "NEUROGUARD ALERT: Seizure! HR:%dBPM Conf:%.0f%% %s", detCtx.hrBPM,
            (double)(detCtx.confidence * 100), loc);
 
 #if ENABLE_GSM
@@ -232,7 +275,13 @@ void dispatchAlerts() {
     doc["hr"] = detCtx.hrBPM;
     doc["lat"] = gpslat;
     doc["lng"] = gpslng;
-    doc["valid"] = gpsValid;
+    doc["valid"] = hasGpsFix();
+    if (gpsValidPhone)
+      doc["locSrc"] = "phone";
+    else if (gpsValidSim)
+      doc["locSrc"] = "sim";
+    else
+      doc["locSrc"] = "none";
     char buf[160];
     serializeJson(doc, buf);
     alertChar->setValue(buf);
@@ -293,9 +342,15 @@ void broadcastData() {
   doc["hr"] = detCtx.hrBPM;
   doc["conf"] = detCtx.confidence;
   doc["ml"] = detCtx.mlSeizureScore;
-  doc["gpsOk"] = gpsValid;
+  doc["gpsOk"] = hasGpsFix();
   doc["lat"] = gpslat;
   doc["lng"] = gpslng;
+  if (gpsValidPhone)
+    doc["locSrc"] = "phone";
+  else if (gpsValidSim)
+    doc["locSrc"] = "sim";
+  else
+    doc["locSrc"] = "none";
   char buf[200];
   serializeJson(doc, buf);
   dataChar->setValue(buf);
@@ -361,6 +416,9 @@ void initGSM() {
   delay(500);
   gsmSerial.println("AT+CMGF=1");
   delay(500);
+  gsmSerial.println("AT+CREG=1");
+  delay(500);
+  Serial.println("[GSM] SMS + cell location (LBS) ready");
 #endif
 }
 

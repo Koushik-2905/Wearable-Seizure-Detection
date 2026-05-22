@@ -3,7 +3,9 @@ import StatCard from "./components/StatCard.jsx";
 import ConfidenceBar from "./components/ConfidenceBar.jsx";
 import LocationCard from "./components/LocationCard.jsx";
 import AlertList from "./components/AlertList.jsx";
+import ActiveAlertBanner from "./components/ActiveAlertBanner.jsx";
 import { usePatientData } from "./hooks/usePatientData.js";
+import { useAlertNotifications } from "./hooks/useAlertNotifications.js";
 import "./App.css";
 
 function stateLabel(state) {
@@ -17,7 +19,11 @@ function stateLabel(state) {
 }
 
 export default function App() {
-  const { patient, vitals, alerts, loading, acknowledgeAlert } = usePatientData();
+  const { patient, vitals, alerts, loading, live, mode, error, acknowledgeAlert } =
+    usePatientData();
+  const { requestPermission } = useAlertNotifications(alerts, vitals);
+
+  const latestActive = alerts.find((a) => !a.acknowledged) ?? alerts[0];
 
   if (loading) {
     return <div className="loading">Loading patient data…</div>;
@@ -30,9 +36,21 @@ export default function App() {
       <Header patient={patient} connected={vitals.bleConnected} />
 
       <main className="main">
-        <p className="demo-banner">
-          Demo data — connect Firebase RTDB (devices/{patient.id}/events) for live alerts from the wearable
+        <p className={`demo-banner ${live ? "demo-banner--live" : ""}`}>
+          {live
+            ? mode === "firebase"
+              ? `Live Firebase · devices/${patient.id}/vitals`
+              : "Live relay · phone app → this PC (port 5174) · keep Flutter monitor open on same Wi‑Fi"
+            : error ||
+              "Waiting for data — run npm.cmd run dev here, connect phone to ESP32 in Flutter Live Monitor (same Wi‑Fi)."}
         </p>
+
+        <ActiveAlertBanner
+          alert={latestActive}
+          vitalsState={vitals.state}
+          onAcknowledge={acknowledgeAlert}
+          onEnableNotify={requestPermission}
+        />
 
         <div className="grid-stats">
           <StatCard label="Heart rate" value={vitals.heartRate} unit="BPM" hint="From MAX30102" />
@@ -59,7 +77,12 @@ export default function App() {
         </section>
 
         <div className="grid-main">
-          <LocationCard lat={vitals.lat} lng={vitals.lng} gpsOk={vitals.gpsOk} />
+          <LocationCard
+            lat={vitals.lat}
+            lng={vitals.lng}
+            gpsOk={vitals.gpsOk}
+            locSrc={vitals.locSrc}
+          />
           <AlertList alerts={alerts} onAcknowledge={acknowledgeAlert} />
         </div>
       </main>
