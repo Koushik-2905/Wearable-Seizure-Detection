@@ -13,6 +13,13 @@ import '../widgets/sensor_chart.dart';
 
 const _stateLabels = ['Monitoring', 'Detected', 'Alert sent', 'Cancelled'];
 
+String _stateLabel(int state) {
+  if (state < 0 || state >= _stateLabels.length) {
+    return _stateLabels.first;
+  }
+  return _stateLabels[state];
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.device});
 
@@ -56,7 +63,9 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _connecting = false;
         _status = 'Connected — waiting for wearable data (1/s over BLE)';
-        if (_ble.setupWarning != null) _status = _ble.setupWarning;
+        if (_ble.setupWarning != null) {
+          _status = _ble.setupWarning;
+        }
       });
     } catch (e) {
       setState(() {
@@ -81,9 +90,11 @@ class _HomeScreenState extends State<HomeScreen> {
       _reading = r;
       _bleReceiving = true;
       _confHistory.add(r.confidence);
-      if (_confHistory.length > 60) _confHistory.removeAt(0);
+      if (_confHistory.length > 60) {
+        _confHistory.removeAt(0);
+      }
       _status =
-          'Live · ${_stateLabels[r.state.clamp(0, _stateLabels.length - 1)]} · cloud: ${FirebaseService.cloudModeLabel}';
+          'Live · ${_stateLabel(r.state)} · cloud: ${FirebaseService.cloudModeLabel}';
     });
   }
 
@@ -103,16 +114,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final r = _reading;
-    final lat = r?.lat;
-    final lng = r?.lng;
-    final hasMap = lat != null && lng != null && (r?.gpsOk ?? false);
-
     return Scaffold(
       backgroundColor: const Color(0xFF050A07),
       appBar: AppBar(
         backgroundColor: Colors.black,
-        title: const Text('Live Monitor', style: TextStyle(color: Color(0xFF00FF9D), fontSize: 16)),
+        title: const Text(
+          'Live Monitor',
+          style: TextStyle(color: Color(0xFF00FF9D), fontSize: 16),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF00FF9D)),
           onPressed: () => Navigator.pop(context),
@@ -125,61 +134,96 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          ConnectionBanner(
-            connected: _ble.connected,
-            gpsOk: r?.gpsOk ?? false,
-            bleReceiving: _bleReceiving,
-            setupWarning: _ble.setupWarning,
-            cloudLabel: FirebaseService.cloudModeLabel,
-          ),
-          if (_connecting)
-            const Expanded(
-              child: Center(
-                child: CircularProgressIndicator(color: Color(0xFF00FF9D)),
-              ),
-            )
-          else ...[
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(_status ?? '', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+      body: _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
+    final r = _reading;
+    final lat = r?.lat;
+    final lng = r?.lng;
+    final hasMap = lat != null && lng != null && (r?.gpsOk ?? false);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ConnectionBanner(
+          connected: _ble.connected,
+          gpsOk: r?.gpsOk ?? false,
+          bleReceiving: _bleReceiving,
+          setupWarning: _ble.setupWarning,
+          cloudLabel: FirebaseService.cloudModeLabel,
+        ),
+        if (_connecting)
+          const Expanded(
+            child: Center(
+              child: CircularProgressIndicator(color: Color(0xFF00FF9D)),
             ),
-            _metricRow('Device state',
-                r != null ? _stateLabels[r.state.clamp(0, _stateLabels.length - 1)] : '--'),
-            _metricRow('Last BLE update', _formatLastUpdate()),
-            _metricRow('Heart Rate', '${r?.hr ?? '--'} BPM'),
-            _metricRow('Confidence', '${((r?.confidence ?? 0) * 100).toStringAsFixed(0)}%'),
-            _metricRow('GPS', r?.gpsOk == true ? '${lat?.toStringAsFixed(5)}, ${lng?.toStringAsFixed(5)}' : 'Waiting…'),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Text('Confidence (live)', style: TextStyle(color: Color(0xFF00FF9D), fontSize: 12)),
-            ),
-            Padding(padding: const EdgeInsets.all(8), child: SensorChart(confidenceHistory: _confHistory)),
-            Expanded(
-              child: hasMap
-                  ? GoogleMap(
-                      initialCameraPosition: CameraPosition(target: LatLng(lat!, lng!), zoom: 16),
-                      markers: {
-                        Marker(
-                          markerId: const MarkerId('neuroguard'),
-                          position: LatLng(lat, lng),
+          )
+        else
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    _status ?? '',
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                ),
+                _metricRow('Device state', r != null ? _stateLabel(r.state) : '--'),
+                _metricRow('Last BLE update', _formatLastUpdate()),
+                _metricRow('Heart Rate', '${r?.hr ?? '--'} BPM'),
+                _metricRow(
+                  'Confidence',
+                  '${((r?.confidence ?? 0) * 100).toStringAsFixed(0)}%',
+                ),
+                _metricRow(
+                  'GPS',
+                  r?.gpsOk == true
+                      ? '${lat!.toStringAsFixed(5)}, ${lng!.toStringAsFixed(5)}'
+                      : 'Waiting…',
+                ),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: Text(
+                    'Confidence (live)',
+                    style: TextStyle(color: Color(0xFF00FF9D), fontSize: 12),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: SensorChart(confidenceHistory: _confHistory),
+                ),
+                Expanded(
+                  child: hasMap
+                      ? GoogleMap(
+                          initialCameraPosition: CameraPosition(
+                            target: LatLng(lat!, lng!),
+                            zoom: 16,
+                          ),
+                          markers: {
+                            Marker(
+                              markerId: const MarkerId('neuroguard'),
+                              position: LatLng(lat, lng),
+                            ),
+                          },
+                          myLocationEnabled: true,
+                        )
+                      : const Center(
+                          child: Text(
+                            'Map appears when GPS syncs.\n'
+                            'Keep this screen open while testing.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.white38),
+                          ),
                         ),
-                      },
-                      myLocationEnabled: true,
-                    )
-                  : const Center(
-                      child: Text(
-                        'Map appears when GPS syncs.\nKeep this screen open while testing.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white38),
-                      ),
-                    ),
+                ),
+              ],
             ),
-          ],
-        ],
-      ),
+          ),
+      ],
     );
   }
 
@@ -190,8 +234,14 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: const TextStyle(color: Colors.white70)),
-          Text(value, style: const TextStyle(color: Color(0xFFE8F5E8), fontWeight: FontWeight.w600)),
-        ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Color(0xFFE8F5E8),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
