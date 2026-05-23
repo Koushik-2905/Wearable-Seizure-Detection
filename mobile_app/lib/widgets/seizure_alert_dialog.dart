@@ -5,7 +5,6 @@ Future<void> showSeizureAlertDialog(
   BuildContext context,
   Map<String, dynamic> data,
 ) async {
-  final conf = data['conf'];
   final hr = data['hr'];
   final valid = data['valid'] == true;
   final lat = (data['lat'] as num?)?.toDouble();
@@ -24,7 +23,6 @@ Future<void> showSeizureAlertDialog(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Confidence: $conf%', style: const TextStyle(color: Colors.white)),
           Text('Heart Rate: $hr BPM', style: const TextStyle(color: Colors.white)),
           if (valid && lat != null && lng != null)
             TextButton(

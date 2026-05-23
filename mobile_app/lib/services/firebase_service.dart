@@ -4,18 +4,36 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
 import '../constants/relay_config.dart';
+import '../firebase_options.dart';
 import 'relay_service.dart';
+
+const String _rtdbUrl = 'https://neuroguard-df097-default-rtdb.firebaseio.com';
+const String _deviceId = 'neuroguard-001';
 
 /// Firebase RTDB + FCM — requires google-services.json (see README).
 class FirebaseService {
   static bool _initialized = false;
   static String? _initError;
 
+  static DatabaseReference? _vitalsRef;
+  static DatabaseReference? _eventsRef;
+
   static Future<bool> initialize() async {
     try {
-      await Firebase.initializeApp();
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      final db = FirebaseDatabase.instanceFor(
+        app: Firebase.app(),
+        databaseURL: _rtdbUrl,
+      );
+      _vitalsRef = db.ref('devices/$_deviceId/vitals');
+      _eventsRef = db.ref('devices/$_deviceId/events');
       _initialized = true;
       _initError = null;
+      if (kDebugMode) {
+        debugPrint('[Firebase] Connected to $_rtdbUrl');
+      }
       await FirebaseMessaging.instance.requestPermission();
       return true;
     } catch (e) {
@@ -43,9 +61,9 @@ class FirebaseService {
     required String type,
     required Map<String, dynamic> payload,
   }) async {
-    if (!_initialized) return;
+    if (!_initialized || _eventsRef == null) return;
     try {
-      final ref = FirebaseDatabase.instance.ref('devices/$deviceId/events').push();
+      final ref = _eventsRef!.push();
       await ref.set({
         'type': type,
         'ts': ServerValue.timestamp,
@@ -100,9 +118,9 @@ class FirebaseService {
 
     final payload = _vitalsPayload(data);
 
-    if (_initialized) {
+    if (_initialized && _vitalsRef != null) {
       try {
-        await FirebaseDatabase.instance.ref('devices/neuroguard-001/vitals').set({
+        await _vitalsRef!.set({
           ...payload,
           'ts': ServerValue.timestamp,
         });

@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -36,8 +34,6 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _connecting = true;
   String? _status;
   DateTime? _lastBleUpdate;
-  bool _bleReceiving = false;
-  Timer? _staleTimer;
 
   @override
   void initState() {
@@ -47,14 +43,6 @@ class _HomeScreenState extends State<HomeScreen> {
       onSensorData: _onSensor,
     );
     _connect();
-    _staleTimer = Timer.periodic(const Duration(seconds: 2), (_) {
-      if (!mounted || _connecting) return;
-      final receiving = _lastBleUpdate != null &&
-          DateTime.now().difference(_lastBleUpdate!) <= const Duration(seconds: 4);
-      if (receiving != _bleReceiving) {
-        setState(() => _bleReceiving = receiving);
-      }
-    });
   }
 
   Future<void> _connect() async {
@@ -62,7 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await _ble.connect(widget.device);
       setState(() {
         _connecting = false;
-        _status = 'Connected — waiting for wearable data (1/s over BLE)';
+        _status = 'Connected — live data from wearable';
         if (_ble.setupWarning != null) {
           _status = _ble.setupWarning;
         }
@@ -81,6 +69,12 @@ class _HomeScreenState extends State<HomeScreen> {
     showSeizureAlertDialog(context, data);
   }
 
+  double _chartSample(Map<String, dynamic> data) {
+    final conf = (data['conf'] as num?)?.toDouble() ?? 0;
+    final ml = (data['ml'] as num?)?.toDouble() ?? 0;
+    return conf > ml ? conf : ml;
+  }
+
   void _onSensor(Map<String, dynamic> data) {
     if (!mounted) return;
     _lastBleUpdate = DateTime.now();
@@ -88,13 +82,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final r = SensorReading.fromJson(data);
     setState(() {
       _reading = r;
-      _bleReceiving = true;
-      _confHistory.add(r.confidence);
+      _confHistory.add(_chartSample(data));
       if (_confHistory.length > 60) {
         _confHistory.removeAt(0);
       }
-      _status =
-          'Live · ${_stateLabel(r.state)} · cloud: ${FirebaseService.cloudModeLabel}';
+      _status = 'Live · ${_stateLabel(r.state)}';
     });
   }
 
@@ -107,7 +99,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    _staleTimer?.cancel();
     _ble.disconnect();
     super.dispose();
   }
@@ -149,10 +140,7 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         ConnectionBanner(
           connected: _ble.connected,
-          gpsOk: r?.gpsOk ?? false,
-          bleReceiving: _bleReceiving,
           setupWarning: _ble.setupWarning,
-          cloudLabel: FirebaseService.cloudModeLabel,
         ),
         if (_connecting)
           const Expanded(
@@ -176,10 +164,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 _metricRow('Last BLE update', _formatLastUpdate()),
                 _metricRow('Heart Rate', '${r?.hr ?? '--'} BPM'),
                 _metricRow(
-                  'Confidence',
-                  '${((r?.confidence ?? 0) * 100).toStringAsFixed(0)}%',
-                ),
-                _metricRow(
                   'GPS',
                   r?.gpsOk == true
                       ? '${lat!.toStringAsFixed(5)}, ${lng!.toStringAsFixed(5)}'
@@ -188,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const Padding(
                   padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
                   child: Text(
-                    'Confidence (live)',
+                    'Seizure score (live)',
                     style: TextStyle(color: Color(0xFF00FF9D), fontSize: 12),
                   ),
                 ),

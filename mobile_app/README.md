@@ -80,5 +80,5 @@ flutter run
 - BLE scan + connect to `NeuroGuard`
 - GPS write every 10s → ESP32
 - Alert notify → full-screen dialog + Maps link
-- Live confidence chart + map pin
+- Live seizure-score graph + map pin
 - Firebase event log when configured
