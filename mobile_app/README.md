@@ -49,7 +49,25 @@ Google Maps: add API key in `AndroidManifest.xml` under `<application>`:
 3. Add iOS app → `GoogleService-Info.plist` → `ios/Runner/`
 4. Follow FlutterFire CLI: `flutterfire configure`
 
-Without Firebase, the app still works over BLE; cloud logging is skipped.
+Without Firebase, vitals go to the **caretaker dashboard relay** (`relay_config.dart`). Run from repo root:
+
+```powershell
+.\scripts\set-relay-ip.ps1
+cd caretaker-dashboard
+npm.cmd install
+npm.cmd run dev
+```
+
+Phone and PC must be on the **same Wi‑Fi**. Rebuild the APK after changing `relay_config.dart`.
+
+### App not updating?
+
+1. **Patient app (Live Monitor)** — must show **Last BLE update: Just now** every ~1s. If not:
+   - ESP32 Serial shows `Phone connected`
+   - Reconnect from scan screen; keep Live Monitor open
+2. **Caretaker dashboard** — patient app forwards data; dashboard does not talk to ESP32 directly
+3. **Caretaker Flutter app** — needs `google-services.json` on **both** patient and caretaker apps + Firebase RTDB rules deployed
+4. **Relay IP** — wrong IP in `relay_config.dart` is the #1 cause; run `set-relay-ip.ps1` then `flutter build apk`
 
 ## Run
 
