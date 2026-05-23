@@ -1,9 +1,9 @@
-// NeuroGuard ESP32 Firmware v2.0 — GPS: phone BLE, SIM cell fallback
+// NeuroGuard ESP32 Firmware v2.0 — BLE GPS + SIM800L SMS/cell location
 #include "config.h"
 #include "detection.h"
 #include "seizure_tflite.h"
-#include "hardware_logic.h"
-#include "gsm_location.h"
+#include "hardware_logic.h"  // MPU6050 + MAX30102 (extern mpu)
+#include "gsm_location.h"      // SIM800L UART2 GPIO16/17
 
 #include <Wire.h>
 #include <HardwareSerial.h>
@@ -290,8 +290,9 @@ void dispatchAlerts() {
     strcpy(loc, "Location unavailable");
   }
 
-  char sms[280];
-  snprintf(sms, 280, "NEUROGUARD ALERT: Seizure! HR:%dBPM Conf:%.0f%% %s", detCtx.hrBPM,
+  // Single SMS segment (160 chars max for reliable SIM800L delivery)
+  char sms[161];
+  snprintf(sms, sizeof(sms), "NEUROGUARD ALERT! HR:%d Conf:%.0f%% %s", detCtx.hrBPM,
            (double)(detCtx.confidence * 100), loc);
 
 #if ENABLE_GSM
@@ -352,17 +353,12 @@ void IRAM_ATTR handleSOS() {
 }
 
 void sendSMS(const char *num, const char *msg) {
-#if ENABLE_GSM
-  gsmSerial.println("AT+CMGF=1");
-  delay(500);
-  gsmSerial.print("AT+CMGS=\"");
-  gsmSerial.print(num);
-  gsmSerial.println("\"");
-  delay(500);
-  gsmSerial.print(msg);
-  delay(100);
-  gsmSerial.write(26);
-  delay(3000);
+#if ENABLE_GSM && !SIMULATION_MODE
+  if (gsmSendTextSms(gsmSerial, num, msg)) {
+    Serial.printf("[GSM] SMS OK -> %s\n", num);
+  } else {
+    Serial.printf("[GSM] SMS FAILED -> %s\n", num);
+  }
 #endif
 }
 
@@ -443,15 +439,11 @@ void initOLED() {
 
 void initGSM() {
 #if ENABLE_GSM && !SIMULATION_MODE
-  gsmSerial.begin(9600, SERIAL_8N1, GSM_RX, GSM_TX);
-  delay(3000);
-  gsmSerial.println("AT");
-  delay(500);
-  gsmSerial.println("AT+CMGF=1");
-  delay(500);
-  gsmSerial.println("AT+CREG=1");
-  delay(500);
-  Serial.println("[GSM] SMS + cell location (LBS) ready");
+  Serial.printf("[GSM] UART2 RX=GPIO%d (SIM TX)  TX=GPIO%d (SIM RX) @ %d\n", GSM_RX, GSM_TX,
+                GSM_BAUD);
+  gsmSerial.begin(GSM_BAUD, SERIAL_8N1, GSM_RX, GSM_TX);
+  delay(GSM_BOOT_DELAY_MS);
+  gsmInitModule(gsmSerial);
 #endif
 }
 

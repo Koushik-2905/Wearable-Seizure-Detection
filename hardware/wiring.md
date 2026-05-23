@@ -8,19 +8,25 @@
 | MAX30102 / MAX30105 | 0x57 | Shared bus |
 | SSD1306 OLED | 0x3C | 128×64 |
 
-## UART2 — SIM800L (GPIO 16 RX, 17 TX)
+## UART2 — SIM800L (9600 baud)
 
-- **Critical:** SIM800L VCC on separate 2A-capable rail + 1000µF cap
-- Do not power SIM800L from ESP32 3.3V pin
+| ESP32 | SIM800L | Notes |
+|-------|---------|--------|
+| GPIO **16** (RX) | **TX** | crossed |
+| GPIO **17** (TX) | **RX** | crossed |
+| GND | GND | common |
+
+- **Critical:** SIM800L VCC on separate 2A-capable rail (3.7–4.2 V) + 1000µF cap
+- Do not power SIM800L from ESP32 3.3 V pin
 
 ## GPIO outputs
 
-| Function | GPIO | Driver |
+| Function | GPIO | Notes |
 |----------|------|--------|
-| Buzzer | 25 | NPN 2N2222 |
+| Buzzer | **4** | Active buzzer or NPN driver |
+| Cancel button | **5** | INPUT_PULLUP → GND when pressed |
 | Vibration | 26 | NPN 2N2222 |
 | LED | 27 | 220Ω series |
-| SOS button | 34 | INPUT_PULLUP, 10kΩ |
 
 ## Power
 

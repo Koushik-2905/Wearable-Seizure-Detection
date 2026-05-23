@@ -39,6 +39,17 @@ When `ENABLE_GSM` and `ENABLE_GSM_LBS` are `1` in `config.h`, the band queries t
 - Serial log: `[GSM-LBS] OK via CLBS` or `CIPGSMLOC`.
 - SMS map link is tagged `(approx cell)` when only SIM location is used.
 
-## Pin map
+## Pin map (ESP32 DevKit)
 
-See docs site section **04 Circuit Design** or `../hardware/wiring.md`.
+| Function | GPIO |
+|----------|------|
+| SIM800L RX (ESP receives) | **16** ← SIM TX |
+| SIM800L TX (ESP transmits) | **17** → SIM RX |
+| Buzzer | **4** |
+| Cancel button | **5** |
+| I2C SDA / SCL | 21 / 22 |
+| GSM / LED / Vib | see `config.h` |
+
+Full diagram: `../hardware/wiring.md`
+
+Edit **`CONTACTS[]`** and **`GSM_APN`** in `config.h` before field use.

@@ -19,8 +19,15 @@
 #define MPU_INT_PIN 35
 #define I2C_SDA 21
 #define I2C_SCL 22
+
+// SIM800L on UART2 (9600 baud) — TX/RX crossed, common GND, separate 4V/2A supply
+//   ESP32 GPIO16 (GSM_RX)  <--  SIM800L TX
+//   ESP32 GPIO17 (GSM_TX)  -->  SIM800L RX
 #define GSM_RX 16
 #define GSM_TX 17
+#define GSM_BAUD 9600
+#define GSM_BOOT_DELAY_MS 2500
+#define GSM_REG_WAIT_MS 60000
 
 // ── BLE UUIDs (must match mobile_app/lib/constants/ble_uuids.dart) ──
 #define SERVICE_UUID "12345678-1234-1234-1234-123456789abc"
@@ -30,7 +37,7 @@
 #define CHAR_UUID_CONFIG "12345678-1234-1234-1234-123456789abf"
 
 // ── Emergency SMS contacts (E.164 format) ─────────────────────
-static const char *CONTACTS[] = {"+919876543210", "+919876543211"};
+static const char *CONTACTS[] = {"+916363824264", "+917603926572"};
 static const int CONTACT_COUNT = 2;
 
 // ── Detection ───────────────────────────────────────────────────
