@@ -12,8 +12,8 @@
 #define ML_INFERENCE_INTERVAL_MS 2000
 
 // ── Pins (ESP32 DevKit) ─────────────────────────────────────────
-#define SOS_BTN_PIN 34
-#define BUZZER_PIN 25
+#define SOS_BTN_PIN 5   // Cancel button (active LOW, use INPUT_PULLUP)
+#define BUZZER_PIN 4
 #define VIB_MOTOR_PIN 26
 #define LED_PIN 27
 #define MPU_INT_PIN 35
@@ -40,8 +40,9 @@ static const int CONTACT_COUNT = 2;
 #define ZCR_LOW 6.0f
 #define ZCR_HIGH 16.0f
 #define CONFIDENCE_THR 0.80f
-#define CANCEL_WINDOW_MS 5000
+// Abnormal → wait MIN_DURATION_MS → buzzer ON → CANCEL_WINDOW_MS to press D5 → else SMS+GPS
 #define MIN_DURATION_MS 10000
+#define CANCEL_WINDOW_MS 5000
 #define GPS_STALE_MS 30000
 
 // SIM800L cell-tower location when phone GPS / BLE unavailable (rough, ~100 m–2 km)

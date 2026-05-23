@@ -39,7 +39,18 @@ bool deviceConnected = false;
 DetectionContext detCtx;
 DeviceState state = MONITORING;
 unsigned long tDetect = 0;
+unsigned long tBuzzerOn = 0;
 bool cancelFlag = false;
+bool buzzerActive = false;
+
+static bool cancelButtonPressed() {
+  static unsigned long lastMs = 0;
+  if (digitalRead(SOS_BTN_PIN) != LOW) return false;
+  unsigned long now = millis();
+  if (now - lastMs < 250) return false;
+  lastMs = now;
+  return true;
+}
 
 float gpslat = 0.0f, gpslng = 0.0f;
 bool gpsValidPhone = false;
@@ -155,7 +166,8 @@ void loop() {
     if (state == MONITORING && hwState.isAbnormal && hwState.fingerPresent) {
       state = DETECTED;
       tDetect = millis();
-      activateLocal();
+      buzzerActive = false;
+      cancelFlag = false;
       Serial.printf("[DETECT] Hardware rule: %s\n", hwState.status);
     }
   }
@@ -191,7 +203,8 @@ void loop() {
           )) {
         state = DETECTED;
         tDetect = millis();
-        activateLocal();
+        buzzerActive = false;
+        cancelFlag = false;
         Serial.printf("[DETECT] ML/threshold confidence: %.2f\n", detCtx.confidence);
       }
     }
@@ -199,16 +212,34 @@ void loop() {
 
   if (state == DETECTED) {
     unsigned long elapsed = millis() - tDetect;
-    if (cancelFlag) {
-      doCancel();
-    } else if (elapsed >= CANCEL_WINDOW_MS && elapsed >= MIN_DURATION_MS) {
-      dispatchAlerts();
-      state = ALERT_SENT;
+
+    if (elapsed < MIN_DURATION_MS) {
+      int rem = max(1, (int)(MIN_DURATION_MS - elapsed) / 1000);
+      char buf[32];
+      snprintf(buf, 32, "Buzzer in: %ds", rem);
+      showOLED("!! ABNORMAL !!", "Confirming...", buf);
+    } else {
+      if (!buzzerActive) {
+        activateLocal();
+        buzzerActive = true;
+        tBuzzerOn = millis();
+        cancelFlag = false;
+        Serial.println("[ALERT] Buzzer ON — 5s to cancel with button");
+      }
+
+      unsigned long buzzElapsed = millis() - tBuzzerOn;
+      if (cancelFlag || cancelButtonPressed()) {
+        doCancel();
+      } else if (buzzElapsed >= CANCEL_WINDOW_MS) {
+        dispatchAlerts();
+        state = ALERT_SENT;
+      } else {
+        int rem = max(1, (int)(CANCEL_WINDOW_MS - buzzElapsed) / 1000);
+        char buf[32];
+        snprintf(buf, 32, "Cancel: %ds", rem);
+        showOLED("!! SEIZURE !!", "Press D5 cancel", buf);
+      }
     }
-    int rem = max(0, (int)(CANCEL_WINDOW_MS - elapsed) / 1000);
-    char buf[32];
-    snprintf(buf, 32, "Cancel: %ds", rem);
-    showOLED("!! SEIZURE !!", "Sending alert...", buf);
   }
 
   if (deviceConnected) broadcastData();
@@ -234,6 +265,10 @@ void loop() {
   if (state == ALERT_SENT && millis() - tDetect > 60000) {
     state = MONITORING;
     cancelFlag = false;
+    buzzerActive = false;
+    digitalWrite(BUZZER_PIN, LOW);
+    digitalWrite(LED_PIN, LOW);
+    digitalWrite(VIB_MOTOR_PIN, LOW);
     showOLED("NeuroGuard", "Monitoring...", "Alert resolved");
   }
 }
@@ -300,22 +335,20 @@ void activateLocal() {
 
 void doCancel() {
   state = CANCELLED;
+  buzzerActive = false;
   digitalWrite(BUZZER_PIN, LOW);
   digitalWrite(LED_PIN, LOW);
   digitalWrite(VIB_MOTOR_PIN, LOW);
   cancelFlag = false;
-  showOLED("Cancelled", "False positive?", "Resuming...");
+  showOLED("Cancelled", "No SMS sent", "Resuming...");
+  Serial.println("[ALERT] Cancelled — buzzer off, no GPS/SMS");
   delay(3000);
   state = MONITORING;
 }
 
 void IRAM_ATTR handleSOS() {
-  if (state == DETECTED)
+  if (state == DETECTED && buzzerActive)
     cancelFlag = true;
-  else if (state == MONITORING) {
-    state = DETECTED;
-    tDetect = millis() - CANCEL_WINDOW_MS;
-  }
 }
 
 void sendSMS(const char *num, const char *msg) {
